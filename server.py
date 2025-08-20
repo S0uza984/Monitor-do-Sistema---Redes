@@ -21,14 +21,14 @@ def receive():
             """
         client.send(menu.encode())
         print(f"Conectado {str(addr)}")
-        conexao_thread= threading.Thread(target=handle, args=(client))
+        conexao_thread= threading.Thread(target=handle, args=(client,))
         conexao_thread.start()
 
 def handle(client):
     while True:
-        msg_monitoramento = client.recv(1024).decode("ascii")
+        msg_monitoramento = client.recv(1024).decode("utf-8")
         if(msg_monitoramento.lower() == "exit"):
-                client.send("Saindo da conexão").encode("ascii") #termina a conexão e as threads
+                client.send("Saindo da conexão".encode("utf-8")) #termina a conexão e as threads
                 client.close()
                 break
         else:
@@ -45,11 +45,12 @@ def handle(client):
 def monitor_memoria(client,periodo):
     while True:
         uso_memoria = psutil.virtual_memory().percent
-        client.send(f"Uso de Memória: {uso_memoria}%".encode("ascii"))
+        client.send(f"Uso de Memória: {uso_memoria}%".encode("utf-8"))
         threading.Event().wait(periodo)
 def monitor_cpu(client,periodo):
     while True:
         uso_cpu = psutil.cpu_percent(interval=periodo)
-        client.send(f"Uso de CPU: {uso_cpu}%".encode("ascii"))
+        print({uso_cpu})
+        client.send(f"Uso de CPU: {uso_cpu}%".encode("utf-8"))
 
 receive()
