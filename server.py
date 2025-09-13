@@ -2,7 +2,12 @@ import socket
 from datetime import datetime
 import threading
 import psutil
+import sys
 
+# gerenciamento de clientes
+connected_clients = []
+client_limit = 5
+client_lock = threading.Lock()
 
 def send_message(client,msg):
     try:
@@ -15,7 +20,7 @@ def monitor_cpu(client,periodo,stop_cpu):
         if stop_cpu.wait(periodo):
             break
         try:
-            uso_cpu = psutil.cpu_percent(interval=None)
+            uso_cpu = psutil.cpu_percent(interval=0.1)
             client.send(f"Uso de CPU: {uso_cpu}%.".encode("utf-8"))
         except Exception:
             break
@@ -35,6 +40,12 @@ def monitor_memoria(client,periodo, stop_memoria):
     
         
 def handle_client(client,addr,menu):
+    global connected_clients
+    
+    # adiciona cliente
+    with client_lock:
+        connected_clients.append((client, addr))
+        print(f"Cliente {str(addr)} conectado. Total de clientes: {len(connected_clients)}")
     
     stop_cpu = threading.Event()
     stop_mem = threading.Event()
@@ -139,6 +150,10 @@ def handle_client(client,addr,menu):
             client.close()
             break
     
+    # remove cliente
+    with client_lock:
+        connected_clients = [(c, a) for c, a in connected_clients if c != client]
+        print(f"Cliente {str(addr)} desconectado. Total de clientes: {len(connected_clients)}")
     
     client.close()
     
@@ -146,11 +161,24 @@ def handle_client(client,addr,menu):
             
             
 def receive(server):
+    global connected_clients, client_limit
+    
     while True:
         try:
             client, addr = server.accept()
+            
+            # verifica limite
+            with client_lock:
+                if len(connected_clients) >= client_limit:
+                    horario = datetime.now().strftime("<%H:%M:%S>")
+                    client.send(f"{horario}: LIMITE DE CLIENTES ATINGIDO. Máximo permitido: {client_limit}".encode("utf-8"))
+                    client.close()
+                    print(f"Cliente {str(addr)} rejeitado - limite atingido ({len(connected_clients)}/{client_limit})")
+                    continue
+            
+            # aceita cliente
             horario = datetime.now().strftime("<%H:%M:%S>")
-            client.send(f"{horario}: CONECTADO".encode("utf-8"))
+            client.send(f"{horario}: CONECTADO!!".encode("utf-8"))
             menu = f"""
                 Menu de Monitores Disponíveis:
                 - Help                      : Reenvia as informações de cada comando
@@ -163,11 +191,13 @@ def receive(server):
                 """
             client.send(menu.encode("utf-8"))
             print(f"Conectado {str(addr)}")
-            conexao_client_thread = threading.Thread(target=handle_client, args=(client,addr,menu))
+            
+            # cria thread
+            conexao_client_thread = threading.Thread(target=handle_client, args=(client,addr,menu), daemon=True)
             conexao_client_thread.start()
             
         except Exception as e:
-            print("Ocorreu um erro no servido:",e)
+            print("Ocorreu um erro no servidor:",e)
             server.close()
             break
         
@@ -176,12 +206,32 @@ def receive(server):
     
 
 def Main():
+    global client_limit
+    
+    # verifica argumentos
+    if len(sys.argv) > 1:
+        try:
+            client_limit = int(sys.argv[1])
+            if client_limit <= 0:
+                print("Erro: O limite de clientes deve ser um número positivo.")
+                return
+        except ValueError:
+            print("Erro: O limite de clientes deve ser um número inteiro.")
+            print("Uso: python server.py [limite_clientes]")
+            return
+    else:
+        print(f"Usando limite padrão de {client_limit} clientes.")
+        print("Para definir um limite personalizado, use: python server.py [limite_clientes]")
+    
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(('0.0.0.0', 9999))
     server.listen(5)
     
     print(f"Servidor iniciado com sucesso!")
+    print(f"Limite de clientes: {client_limit}")
+    print("Aguardando conexões...")
     
     receive(server)
     
-Main()
+if __name__ == "__main__":
+    Main()
