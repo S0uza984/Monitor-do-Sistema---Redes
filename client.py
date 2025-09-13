@@ -39,6 +39,7 @@ def receive(stop_client):
         
 
 def write(stop_client):
+    time.sleep(1)  # Espera um momento para garantir que a thread de recepção esteja pronta
     while not stop_client.is_set():
         try:
             message = input("Digite um comando (ou 'exit' para desconectar): ")
@@ -55,7 +56,7 @@ def write(stop_client):
             client.close()
             stop_client.set()
             break
-
+    
 
 
 def Main():

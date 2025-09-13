@@ -20,7 +20,7 @@ def monitor_cpu(client,periodo,stop_cpu):
         if stop_cpu.wait(periodo):
             break
         try:
-            uso_cpu = psutil.cpu_percent(interval=None)
+            uso_cpu = psutil.cpu_percent(interval=0.1)
             client.send(f"Uso de CPU: {uso_cpu}%.".encode("utf-8"))
         except Exception:
             break
