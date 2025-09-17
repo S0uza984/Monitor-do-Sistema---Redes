@@ -160,10 +160,10 @@ def handle_client(client,addr,menu):
         
             
             
-def receive(server):
+def receive(server,stop_server):
     global connected_clients, client_limit
     
-    while True:
+    while not stop_server.is_set():
         try:
             client, addr = server.accept()
             
@@ -203,11 +203,27 @@ def receive(server):
         
     server.close()
     
-    
+def terminal(stop_server):
+    while True:
+
+        terminal_input = input()
+
+        if terminal_input == "exit":
+            stop_server.set()
+            print("Desligando servidor")
+
+        
+
+        
+
+
+
+
 
 def Main():
     global client_limit
-    
+    terminal_thread = None
+    stop_server = threading.Event()
     # verifica argumentos
     if len(sys.argv) > 1:
         try:
@@ -231,7 +247,9 @@ def Main():
     print(f"Limite de clientes: {client_limit}")
     print("Aguardando conexões...")
     
-    receive(server)
+    terminal_thread = threading.Thread(target=terminal, args=(stop_server,))
+    terminal_thread.start()
+    receive(server,stop_server)
     
 if __name__ == "__main__":
     Main()
