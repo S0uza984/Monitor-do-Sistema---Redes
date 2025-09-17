@@ -64,7 +64,6 @@ def handle_client(client,addr,menu):
             msg_lower = msg_monitoramento.lower()
             
             if msg_lower == "exit":
-                print(f"Monitor no ip: {str(addr)}, desconectado")
                 send_message(client,"Desconectando seu monitor do servidor")
                 stop_cpu.set()
                 stop_mem.set()
