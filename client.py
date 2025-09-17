@@ -39,14 +39,13 @@ def receive(stop_client):
         
 
 def write(stop_client):
-    time.sleep(1)  # Espera um momento para garantir que a thread de recepção esteja pronta
+    time.sleep(0.5)  # Espera um momento para garantir que a thread de recepção esteja pronta
     while not stop_client.is_set():
         try:
-            message = input("Digite um comando (ou 'exit' para desconectar): ")
+            message = input()
             client.send(message.encode("utf-8"))
             time.sleep(0.1)
             if message.strip().lower() == "exit":
-                print("Solicitando desconexão...")
                 client.close()
                 stop_client.set()
                 break

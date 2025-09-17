@@ -20,7 +20,7 @@ def monitor_cpu(client,periodo,stop_cpu):
         if stop_cpu.wait(periodo):
             break
         try:
-            uso_cpu = psutil.cpu_percent(interval=0.1)
+            uso_cpu = psutil.cpu_percent(interval=0.2)
             client.send(f"Uso de CPU: {uso_cpu}%.".encode("utf-8"))
         except Exception:
             break
@@ -45,7 +45,7 @@ def handle_client(client,addr,menu):
     # adiciona cliente
     with client_lock:
         connected_clients.append((client, addr))
-        print(f"Cliente {str(addr)} conectado. Total de clientes: {len(connected_clients)}")
+        print(f"Monitor {str(addr)} conectado. Total de monitores: {len(connected_clients)}")
     
     stop_cpu = threading.Event()
     stop_mem = threading.Event()
@@ -64,7 +64,6 @@ def handle_client(client,addr,menu):
             msg_lower = msg_monitoramento.lower()
             
             if msg_lower == "exit":
-                print(f"Monitor no ip: {str(addr)}, desconectado")
                 send_message(client,"Desconectando seu monitor do servidor")
                 stop_cpu.set()
                 stop_mem.set()
@@ -77,9 +76,9 @@ def handle_client(client,addr,menu):
                     
                     stop_cpu = threading.Event()
                     stop_mem = threading.Event()
-                    send_message(client,"Todos os monitores foram parados")
+                    send_message(client,"Todos os monitoramentos foram parados")
                 else:
-                    send_message(client,"Não há monitores a serem parados")
+                    send_message(client,"Não há monitoramentos a serem parados")
                 continue
                 
             if msg_lower == "help":
@@ -101,17 +100,17 @@ def handle_client(client,addr,menu):
                         stop_mem.set()
                     
                         stop_mem = threading.Event()
-                        send_message(client,"Monitor da memoria parado")
+                        send_message(client,"Monitoriamento da memoria parado")
                     else:
-                        send_message(client,"Não há monitor de memoria a ser parado")
+                        send_message(client,"Não há monitoramento de memoria a ser parado")
                 elif comando2 == "cpu":
                     if monitor_da_cpu and monitor_da_cpu.is_alive():
                         stop_cpu.set()
                     
                         stop_cpu = threading.Event()
-                        send_message(client,"Monitor da cpu parado")
+                        send_message(client,"Monitoriamento da cpu parado")
                     else:
-                        send_message(client,"Não há monitor de cpu a ser parado")
+                        send_message(client,"Não há monitoramento de cpu a ser parado")
                 else:
                     send_message(client,"Comando inválido. Use CPU-<segundos>, MEM-<segundos>, QUIT-<mem/memoria ou CPU> ou EXIT")    
             elif comando == "cpu":
@@ -122,7 +121,7 @@ def handle_client(client,addr,menu):
                 stop_cpu = threading.Event()
                 
                 try:
-                    client.send(f"Iniciando monitor da CPU a cada {comando2}s".encode("utf-8"))
+                    client.send(f"Iniciando monitoriamento da CPU a cada {comando2}s".encode("utf-8"))
                 except Exception:
                     pass
                 
@@ -137,7 +136,7 @@ def handle_client(client,addr,menu):
                 stop_mem = threading.Event()
                 
                 try:
-                    client.send(f"Iniciando monitor da MEMÓRIA a cada {comando2}s".encode("utf-8"))
+                    client.send(f"Iniciando monitoriamento da MEMÓRIA a cada {comando2}s".encode("utf-8"))
                 except Exception:
                     pass
                 
@@ -153,7 +152,7 @@ def handle_client(client,addr,menu):
     # remove cliente
     with client_lock:
         connected_clients = [(c, a) for c, a in connected_clients if c != client]
-        print(f"Cliente {str(addr)} desconectado. Total de clientes: {len(connected_clients)}")
+        print(f"Monitor {str(addr)} desconectado. Total de clientes: {len(connected_clients)}")
     
     client.close()
     
@@ -173,14 +172,14 @@ def receive(server):
                     horario = datetime.now().strftime("<%H:%M:%S>")
                     client.send(f"{horario}: LIMITE DE CLIENTES ATINGIDO. Máximo permitido: {client_limit}".encode("utf-8"))
                     client.close()
-                    print(f"Cliente {str(addr)} rejeitado - limite atingido ({len(connected_clients)}/{client_limit})")
+                    print(f"Monitor {str(addr)} rejeitado - limite atingido ({len(connected_clients)}/{client_limit})")
                     continue
             
             # aceita cliente
             horario = datetime.now().strftime("<%H:%M:%S>")
             client.send(f"{horario}: CONECTADO!!".encode("utf-8"))
             menu = f"""
-                Menu de Monitores Disponíveis:
+                Funções Disponíveis:
                 - Help                      : Reenvia as informações de cada comando
                 - CPU-<segundos>            : Monitora o uso da CPU a cada <segundos>
                 - MEMORIA-<segundos>        : Monitora o uso da memória a cada <segundos>
@@ -190,7 +189,6 @@ def receive(server):
                 Exemplo de uso: CPU-5
                 """
             client.send(menu.encode("utf-8"))
-            print(f"Conectado {str(addr)}")
             
             # cria thread
             conexao_client_thread = threading.Thread(target=handle_client, args=(client,addr,menu), daemon=True)
@@ -203,7 +201,6 @@ def receive(server):
         
     server.close()
     
-    
 
 def Main():
     global client_limit
@@ -213,14 +210,14 @@ def Main():
         try:
             client_limit = int(sys.argv[1])
             if client_limit <= 0:
-                print("Erro: O limite de clientes deve ser um número positivo.")
+                print("Erro: O limite de monitores deve ser um número positivo.")
                 return
         except ValueError:
-            print("Erro: O limite de clientes deve ser um número inteiro.")
+            print("Erro: O limite de monitores deve ser um número inteiro.")
             print("Uso: python server.py [limite_clientes]")
             return
     else:
-        print(f"Usando limite padrão de {client_limit} clientes.")
+        print(f"Usando limite padrão de {client_limit} monitores.")
         print("Para definir um limite personalizado, use: python server.py [limite_clientes]")
     
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -228,9 +225,9 @@ def Main():
     server.listen(5)
     
     print(f"Servidor iniciado com sucesso!")
-    print(f"Limite de clientes: {client_limit}")
+    print(f"Limite de monitores: {client_limit}")
     print("Aguardando conexões...")
-    
+
     receive(server)
     
 if __name__ == "__main__":

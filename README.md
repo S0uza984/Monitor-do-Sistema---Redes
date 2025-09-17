@@ -26,8 +26,8 @@ repositorio destinado ao desenvolvimento do projeto de redes, onde sera desenvol
 # com limite padrao (5 clientes)
 python server.py
 
-# com limite personalizado (ex: 10 clientes)
-python server.py 10
+# com limite personalizado (ex: 3 clientes)
+python server.py 3
 ```
 
 #### executar o cliente
@@ -43,17 +43,6 @@ python client.py
 - `quit-<cpu/memoria>` - para monitoramento especifico
 - `exit` - desconecta do servidor
 
-### teste multi-cliente
-
-para testar o sistema com multiplos clientes:
-
-```bash
-# em um terminal, execute o servidor
-python server.py 3  # limite de 3 clientes
-
-# em outro terminal, execute o teste
-python teste_multi_cliente.py
-```
 
 ### arquitetura
 
