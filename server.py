@@ -20,7 +20,7 @@ def monitor_cpu(client,periodo,stop_cpu):
         if stop_cpu.wait(periodo):
             break
         try:
-            uso_cpu = psutil.cpu_percent(interval=0.2)
+            uso_cpu = psutil.cpu_percent(interval=0.1)
             client.send(f"Uso de CPU: {uso_cpu}%.".encode("utf-8"))
         except Exception:
             break
@@ -93,59 +93,54 @@ def handle_client(client,addr,menu):
                 send_message(client,"Comando inválido. Use CPU-<segundos>, MEM-<segundos>, QUIT-<mem/memoria ou CPU> ou EXIT")
                 continue
             
-            if comando == "quit":
-                    
-                if comando2 in ("mem","memória"):
-                    if monitor_da_memoria and monitor_da_memoria.is_alive():
-                        stop_mem.set()
-                    
-                        stop_mem = threading.Event()
-                        send_message(client,"Monitoriamento da memoria parado")
+            try:
+                if comando == "quit":
+                    if comando2 in ("mem", "memória"):
+                        if monitor_da_memoria and monitor_da_memoria.is_alive():
+                            stop_mem.set()
+                            stop_mem = threading.Event()
+                            send_message(client, "Monitoriamento da memoria parado")
+                        else:
+                            send_message(client, "Não há monitoramento de memoria a ser parado")
+                    elif comando2 == "cpu":
+                        
+                        if monitor_da_cpu and monitor_da_cpu.is_alive():
+                            stop_cpu.set()
+                            stop_cpu = threading.Event()
+                            send_message(client, "Monitoriamento da cpu parado")                   
+                        else:
+                            send_message(client, "Não há monitoramento de cpu a ser parado")
                     else:
-                        send_message(client,"Não há monitoramento de memoria a ser parado")
-                elif comando2 == "cpu":
+                        send_message(client, "Comando inválido. Use CPU-<segundos>, MEM-<segundos>, QUIT-<mem/memoria ou CPU> ou EXIT")
+                elif comando == "cpu":
+                    comando2 = int(comando2)
+                    
                     if monitor_da_cpu and monitor_da_cpu.is_alive():
                         stop_cpu.set()
-                    
-                        stop_cpu = threading.Event()
-                        send_message(client,"Monitoriamento da cpu parado")
-                    else:
-                        send_message(client,"Não há monitoramento de cpu a ser parado")
-                else:
-                    send_message(client,"Comando inválido. Use CPU-<segundos>, MEM-<segundos>, QUIT-<mem/memoria ou CPU> ou EXIT")    
-            elif comando == "cpu":
-                comando2 = int(comando2)
-                if monitor_da_cpu and monitor_da_cpu.is_alive():
-                    stop_cpu.set() 
-                    
-                stop_cpu = threading.Event()
-                
-                try:
+                        
+                    stop_cpu = threading.Event()
                     client.send(f"Iniciando monitoriamento da CPU a cada {comando2}s".encode("utf-8"))
-                except Exception:
-                    pass
-                
-                monitor_da_cpu = threading.Thread(target=monitor_cpu, args=(client,comando2,stop_cpu),  daemon= True)
-                monitor_da_cpu.start() 
-                
-            elif comando in ("mem","memória"):
-                comando2 = int(comando2)
-                if monitor_da_memoria and monitor_da_memoria.is_alive():
-                    stop_mem.set() 
                     
-                stop_mem = threading.Event()
-                
-                try:
+                    monitor_da_cpu = threading.Thread(target=monitor_cpu, args=(client, comando2, stop_cpu), daemon=True)
+                    monitor_da_cpu.start()
+                elif comando in ("mem", "memória"):
+                    comando2 = int(comando2)
+                    
+                    if monitor_da_memoria and monitor_da_memoria.is_alive():
+                        stop_mem.set()
+                        
+                    stop_mem = threading.Event()
+                    
                     client.send(f"Iniciando monitoriamento da MEMÓRIA a cada {comando2}s".encode("utf-8"))
-                except Exception:
-                    pass
-                
-                monitor_da_memoria = threading.Thread(target=monitor_memoria, args=(client,comando2,stop_mem), daemon=True)
-                monitor_da_memoria.start()
-            else:
-                send_message(client,"Comando inválido. Use CPU-<segundos>, MEM-<segundos>, QUIT-<mem/memoria ou CPU> ou EXIT")
+                    
+                    monitor_da_memoria = threading.Thread(target=monitor_memoria, args=(client, comando2, stop_mem), daemon=True)
+                    monitor_da_memoria.start()
+                else:
+                    send_message(client, "Comando inválido. Use CPU-<segundos>, MEM-<segundos>, QUIT-<mem/memoria ou CPU> ou EXIT")
+            except ValueError:
+                send_message(client, "Período inválido. Use um número inteiro positivo para os segundos.")
         except Exception as e:
-            print("Ocorreu um erro:",e)
+            print(f"Ocorreu um erro: a conexão com o monitor {str(addr)} foi perdida repentinamente")
             client.close()
             break
     
@@ -221,8 +216,13 @@ def Main():
         print("Para definir um limite personalizado, use: python server.py [limite_clientes]")
     
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(('0.0.0.0', 9999))
-    server.listen(5)
+    try:
+        server.bind(('0.0.0.0', 9999))
+        server.listen(5)
+    except Exception:
+        print("\nErro ao iniciar o servidor: não foi possível vincular o socket.\n")
+        return
+        
     
     print(f"Servidor iniciado com sucesso!")
     print(f"Limite de monitores: {client_limit}")
@@ -231,4 +231,8 @@ def Main():
     receive(server)
     
 if __name__ == "__main__":
-    Main()
+    try:
+        Main()
+    except KeyboardInterrupt:
+        print("\nServidor encerrado manualmente.")
+    
